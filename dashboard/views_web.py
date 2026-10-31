@@ -16,12 +16,18 @@ from subscriptions.models import Subscription
 
 User = get_user_model()
 
-CYCLE_MONTHS = {"monthly": 1, "quarterly": 3, "annually": 12}
+# Billing periods per month, keyed by Plan.billing_period
+PERIODS_PER_MONTH = {
+    "daily": Decimal(365) / Decimal(12),
+    "weekly": Decimal(52) / Decimal(12),
+    "monthly": Decimal(1),
+    "yearly": Decimal(1) / Decimal(12),
+}
 
 
-def _monthly_equivalent(line):
-    months = CYCLE_MONTHS.get(line.plan.billing_cycle, 1)
-    return (line.unit_price * line.quantity) / Decimal(months)
+def _monthly_equivalent(sub, line):
+    plan = sub.plan or line.plan
+    return line.unit_price * line.quantity * PERIODS_PER_MONTH.get(plan.billing_period, Decimal(1))
 
 
 def _apply_filters(qs, request, date_field):
@@ -44,8 +50,9 @@ def _apply_filters(qs, request, date_field):
 
 @staff_required
 def index(request):
-    active_subs = Subscription.objects.filter(status="active").prefetch_related("lines__plan")
-    mrr = sum((_monthly_equivalent(line) for sub in active_subs for line in sub.lines.all()), Decimal("0"))
+    active_subs = Subscription.objects.filter(status="active").select_related("plan").prefetch_related("lines__plan")
+    mrr = sum((_monthly_equivalent(sub, line) for sub in active_subs for line in sub.lines.all()), Decimal("0"))
+    mrr = mrr.quantize(Decimal("0.01"))
 
     revenue_collected = Payment.objects.aggregate(t=Sum("amount"))["t"] or Decimal("0")
 
@@ -90,7 +97,7 @@ def index(request):
         "revenue_values": revenue_values,
         "status_labels": status_labels,
         "status_values": status_values,
-        "customers": User.objects.filter(role="customer").order_by("username"),
+        "customers": User.objects.filter(role="customer").order_by("name", "email"),
         "plans": Plan.objects.select_related("product").order_by("product__name", "name"),
         "selected_start": request.GET.get("start", ""),
         "selected_end": request.GET.get("end", ""),

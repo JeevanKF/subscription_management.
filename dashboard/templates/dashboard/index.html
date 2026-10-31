@@ -62,7 +62,7 @@
       <option value="">All customers</option>
       {% for customer in customers %}
         <option value="{{ customer.id }}" {% if customer.id|stringformat:"s" == selected_customer %}selected{% endif %}>
-          {{ customer.get_full_name|default:customer.username }}
+          {{ customer.name|default:customer.email }}
         </option>
       {% endfor %}
     </select>
@@ -120,7 +120,7 @@
         {% for invoice in overdue_invoices %}
           <tr>
             <td><a href="{% url 'billing:invoice_detail' invoice.pk %}">{{ invoice.number }}</a></td>
-            <td>{{ invoice.subscription.customer.get_full_name|default:invoice.subscription.customer.username }}</td>
+            <td>{{ invoice.subscription.customer.name|default:invoice.subscription.customer.email }}</td>
             <td>{{ invoice.due_date }}</td>
             <td class="text-danger fw-semibold">₹{{ invoice.balance_due }}</td>
           </tr>

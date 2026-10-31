@@ -23,10 +23,14 @@ from django.db import transaction
 from billing.models import Discount, Invoice, InvoiceLine, Payment
 from products.models import Plan, Product, TaxRule, Variant
 from subscriptions.models import Subscription, SubscriptionLine
+from subscriptions.services import generate_subscription_number
 
 User = get_user_model()
 
-CYCLE_MONTHS = {"monthly": 1, "quarterly": 3, "annually": 12}
+PERIOD_DELTA = {"weekly": relativedelta(weeks=1), "monthly": relativedelta(months=1),
+                "yearly": relativedelta(years=1)}
+# Price multiplier against the monthly base price
+PERIOD_PRICE_FACTOR = {"weekly": Decimal("0.25"), "monthly": Decimal(1), "yearly": Decimal(10)}
 
 PRODUCT_CATALOGUE = [
     ("Cloud Backup", ["Standard", "Pro"]),
@@ -36,13 +40,14 @@ PRODUCT_CATALOGUE = [
     ("Security Shield", ["Essential", "Advanced"]),
 ]
 
-PLAN_CYCLES = [Plan.BillingCycle.MONTHLY, Plan.BillingCycle.QUARTERLY, Plan.BillingCycle.ANNUALLY]
+PLAN_CYCLES = [Plan.BillingPeriod.WEEKLY, Plan.BillingPeriod.MONTHLY, Plan.BillingPeriod.YEARLY]
 
 SUB_STATUS_WEIGHTS = [
     (Subscription.Status.ACTIVE, 60),
     (Subscription.Status.PAUSED, 15),
     (Subscription.Status.CLOSED, 15),
-    (Subscription.Status.DRAFT, 10),
+    (Subscription.Status.DRAFT, 6),
+    (Subscription.Status.QUOTATION, 4),
 ]
 
 INVOICE_STATUS_WEIGHTS = [
@@ -87,7 +92,7 @@ class Command(BaseCommand):
         Invoice.objects.all().delete()
         SubscriptionLine.objects.all().delete()
         Subscription.objects.all().delete()
-        User.objects.filter(role="customer", username__startswith="customer").delete()
+        User.objects.filter(role="customer", email__startswith="customer").delete()
         Variant.objects.all().delete()
         Plan.objects.all().delete()
         Product.objects.all().delete()
@@ -107,36 +112,35 @@ class Command(BaseCommand):
         for product_name, variant_names in PRODUCT_CATALOGUE:
             product, _ = Product.objects.get_or_create(
                 name=product_name,
-                defaults={"description": f"{product_name} subscription product."},
+                defaults={"notes": f"{product_name} subscription product.",
+                          "sales_price": Decimal(random.choice([299, 499, 999]))},
             )
             for variant_name in variant_names:
                 Variant.objects.get_or_create(
-                    product=product, name=variant_name,
+                    product=product, attribute="Edition", value=variant_name,
                     defaults={"extra_price": Decimal(random.choice([0, 199, 499]))},
                 )
             for cycle in PLAN_CYCLES:
                 base_price = Decimal(random.choice([299, 499, 999, 1999]))
-                price = base_price * CYCLE_MONTHS[cycle]
+                price = base_price * PERIOD_PRICE_FACTOR[cycle]
                 plan, _ = Plan.objects.get_or_create(
                     product=product, name=f"{product_name} ({cycle.title()})",
-                    defaults={"billing_cycle": cycle, "price": price},
+                    defaults={"billing_period": cycle, "price": price},
                 )
                 plans.append(plan)
         self.stdout.write(f"Products: {len(PRODUCT_CATALOGUE)}, Plans: {len(plans)}")
         return plans
 
     def _seed_customers(self, count):
-        existing = list(User.objects.filter(role="customer", username__startswith="customer"))
+        existing = list(User.objects.filter(role="customer", email__startswith="customer"))
         if len(existing) >= count:
             return existing[:count]
 
         to_create = []
         for i in range(len(existing), count):
             user = User(
-                username=f"customer{i + 1}",
                 email=f"customer{i + 1}@example.test",
-                first_name="Customer",
-                last_name=str(i + 1),
+                name=f"Customer {i + 1}",
                 role=User.Role.CUSTOMER,
             )
             user.set_password("password123")
@@ -144,28 +148,34 @@ class Command(BaseCommand):
 
         User.objects.bulk_create(to_create, batch_size=500)
         self.stdout.write(f"Customers created: {len(to_create)}")
-        return list(User.objects.filter(role="customer", username__startswith="customer")[:count])
+        return list(User.objects.filter(role="customer", email__startswith="customer")[:count])
 
     @transaction.atomic
     def _seed_subscriptions(self, count, customers, plans, tax_rules):
         today = date.today()
-        existing_count = Subscription.objects.count()
+        # Continue the SUB-0001 sequence used by subscriptions.services
+        first_seq = int(generate_subscription_number().removeprefix("SUB-"))
 
-        subscriptions = []
+        subscriptions, sub_plans = [], []
         for i in range(count):
-            number = f"SUB-{existing_count + i + 1:06d}"
+            plan = random.choice(plans)
             status = _weighted_choice(SUB_STATUS_WEIGHTS)
             start_date = today - timedelta(days=random.randint(0, 540))
-            next_billing_date = None if status in (Subscription.Status.DRAFT, Subscription.Status.CLOSED) \
-                else start_date + relativedelta(months=1)
+            billing = status in (Subscription.Status.ACTIVE, Subscription.Status.PAUSED)
+            next_billing_date = start_date + PERIOD_DELTA[plan.billing_period] if billing else None
+            quotation_expiry = (today + timedelta(days=random.randint(1, 30))
+                                if status == Subscription.Status.QUOTATION else None)
 
             subscriptions.append(Subscription(
                 customer=random.choice(customers),
-                number=number,
+                plan=plan,
+                number=f"SUB-{first_seq + i:04d}",
                 status=status,
                 start_date=start_date,
+                quotation_expiry=quotation_expiry,
                 next_billing_date=next_billing_date,
             ))
+            sub_plans.append(plan)
 
         Subscription.objects.bulk_create(subscriptions, batch_size=500)
         created_subs = list(Subscription.objects.order_by("-id")[:count])
@@ -176,12 +186,12 @@ class Command(BaseCommand):
             variants_by_product.setdefault(variant.product_id, []).append(variant)
 
         lines, invoices_plan = [], []
-        for sub in created_subs:
-            plan = random.choice(plans)
-            quantity = random.randint(1, 3)
+        for sub, plan in zip(created_subs, sub_plans):
+            quantity = random.randint(plan.min_quantity, max(3, plan.min_quantity))
             variant_choices = variants_by_product.get(plan.product_id) or [None]
             lines.append(SubscriptionLine(
                 subscription=sub,
+                product=plan.product,
                 plan=plan,
                 variant=random.choice(variant_choices),
                 tax_rule=random.choice(tax_rules),
@@ -202,13 +212,14 @@ class Command(BaseCommand):
 
         invoices, invoice_meta = [], []
         for sub, plan, quantity in invoices_plan:
-            history_len = random.randint(1, 4) if sub.status != Subscription.Status.DRAFT else 0
-            cycle_months = CYCLE_MONTHS[plan.billing_cycle]
+            no_invoices = (Subscription.Status.DRAFT, Subscription.Status.QUOTATION)
+            history_len = 0 if sub.status in no_invoices else random.randint(1, 4)
+            period = PERIOD_DELTA[plan.billing_period]
 
             for n in range(history_len):
                 counter += 1
-                period_start = sub.start_date + relativedelta(months=cycle_months * n)
-                period_end = period_start + relativedelta(months=cycle_months) - timedelta(days=1)
+                period_start = sub.start_date + period * n
+                period_end = period_start + period - timedelta(days=1)
                 status = _weighted_choice(INVOICE_STATUS_WEIGHTS)
                 subtotal = plan.price * quantity
                 tax_total = (subtotal * Decimal("0.18")).quantize(Decimal("0.01"))
