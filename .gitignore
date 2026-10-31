@@ -22,11 +22,9 @@ node_modules/
 
 # Scratch files created during development
 read_docx.js
-package.json
-package-lock.json
-node_modules/
 
 # OS
 .DS_Store
 Thumbs.db
 
+.vscode/

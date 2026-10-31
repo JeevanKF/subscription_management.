@@ -146,47 +146,75 @@ All modules will be integrated into a single application.
 ```
 brightloop/
 ├── config/          # Django project (settings, urls, wsgi)
-├── accounts/        # Custom User model + Token auth API
-├── products/        # Product, Variant, Plan, TaxRule
-├── subscriptions/   # Subscription lifecycle, quotation templates, status history
-├── billing/         # Invoice, InvoiceLine, Payment, Discount
-├── dashboard/       # Finance metrics API (admin/staff)
-├── portal/          # Customer self-service API
-├── frontend/        # React (Vite) SPA
+├── accounts/        # Custom User model, server-rendered auth/customers/staff pages, Token auth API
+├── products/        # Product, Variant, Plan, TaxRule — server pages + API
+├── subscriptions/   # Subscription lifecycle, quotation templates, status history — pages + API
+├── billing/         # Invoice, InvoiceLine, Payment, Discount — pages + API
+├── dashboard/       # Finance dashboard (server page + API) for admin/staff
+├── portal/          # Customer self-service portal (server pages + API)
+├── templates/       # Shared base.html (sidebar app shell) + 404/500/empty-state partials
+├── frontend/        # Optional React (Vite) SPA for the same /api/* endpoints
 │   └── src/
 │       ├── api/         # Axios API modules per app
 │       ├── context/     # AuthContext (token + user)
 │       ├── components/  # Navbar, ProtectedRoute
 │       └── pages/       # One page component per route
-├── .env             # Local secrets — never commit
+├── .env             # Local secrets — never commit (omit it entirely for SQLite)
 ├── .env.example     # Template
 └── requirements.txt
 ```
 
 ## Local setup
 
-### 1. Backend
+The server-rendered pages (login, dashboard, products, subscriptions, billing,
+customer portal — everything under `http://localhost:8000`, no npm required)
+are the main app. The `frontend/` React SPA is a separate, optional client
+for the same `/api/*` endpoints.
+
+### 1. Backend — quickest path (SQLite, no database setup)
 
 ```bash
-# Create and activate a virtual environment (optional but recommended)
 python -m venv venv
 venv\Scripts\activate          # Windows
 # source venv/bin/activate     # macOS/Linux
 
 pip install -r requirements.txt
 
-# Copy env file and fill in your PostgreSQL credentials
-copy .env.example .env
-
-# Create the database in PostgreSQL first:
-#   CREATE DATABASE brightloop;
+# Do NOT create a .env file for this path — with no .env, Django
+# automatically falls back to a local db.sqlite3 file. No PostgreSQL
+# install, no "database does not exist" errors, nothing else to configure.
 
 python manage.py migrate
-python manage.py createsuperuser   # create the first admin
-python manage.py runserver         # runs on http://localhost:8000
+python manage.py seed_data         # demo tax rules, products, plans,
+                                    # customers, subscriptions, invoices
+python manage.py createsuperuser   # create an admin login
+python manage.py runserver         # http://localhost:8000
 ```
 
-### 2. Frontend
+Log in at `http://localhost:8000/accounts/login/` with the superuser you just
+created (role = admin), or look up a seeded customer's email in the Django
+shell and set a password for it if you want to see the customer portal.
+
+**If a page 500s with `OperationalError: no such column ...` or similar:**
+your local `db.sqlite3` predates a newer migration. It's just a local file
+(it's gitignored, never shared) — delete it and re-run `migrate` + `seed_data`:
+
+```bash
+rm db.sqlite3            # del db.sqlite3   on Windows cmd
+python manage.py migrate
+python manage.py seed_data
+```
+
+### 2. Backend — PostgreSQL instead (optional)
+
+Only do this if you specifically need Postgres. Copy `.env.example` to
+`.env`, fill in `DB_NAME`/`DB_USER`/`DB_PASSWORD`, create that database in
+Postgres first (`CREATE DATABASE brightloop;`), then run the same
+`migrate` / `seed_data` / `createsuperuser` / `runserver` commands above.
+Setting *any* of `DB_NAME` or `DB_HOST` in `.env` switches the app from
+SQLite to Postgres — see `config/settings.py`.
+
+### 3. Frontend (optional React SPA)
 
 ```bash
 cd frontend
@@ -194,7 +222,26 @@ npm install
 npm run dev    # runs on http://localhost:5173
 ```
 
-Vite proxies all `/api/*` requests to Django on port 8000 — no CORS issues in dev.
+Vite proxies all `/api/*` requests to Django on port 8000 — no CORS issues in
+dev. The Django backend must already be running (step 1 or 2 above).
+
+### Troubleshooting a teammate's machine
+
+- **"No `.vscode`/python interpreter" errors in the editor:** that's an
+  editor setting, not the app — point your IDE at your own `venv`
+  (`venv\Scripts\python.exe` / `venv/bin/python`). `.vscode/` is gitignored
+  now so this won't come from the repo.
+- **`ModuleNotFoundError` for a Python package:** your venv wasn't active
+  when you ran `pip install -r requirements.txt`, or you're running
+  `python`/`manage.py` with a different interpreter than the one you
+  installed into. Re-activate the venv and re-run `pip install`.
+- **`npm error could not determine executable to run` / no `package.json`
+  found in `frontend/`:** make sure you pulled the latest `main` —
+  `frontend/package.json` is tracked in git (it used to be accidentally
+  gitignored on some branches).
+- **Blank/empty-looking pages after `runserver`:** you haven't run
+  `seed_data` yet, or you're not logged in. Create a superuser (above) and
+  log in at `/accounts/login/`.
 
 ## API endpoints
 

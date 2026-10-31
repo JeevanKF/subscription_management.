@@ -13,12 +13,6 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# ─── Python Executable Path ───────────────────────────────────────────────────
-PYTHON_EXECUTABLE = os.environ.get(
-    "PYTHON_EXECUTABLE",
-    r"C:\Users\lenovo\AppData\Local\Programs\Python\Python313\python.exe",
-)
-
 # ─── Security ─────────────────────────────────────────────────────────────────
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-dev-key-change-me")
 DEBUG = os.environ.get("DEBUG", "True") == "True"
