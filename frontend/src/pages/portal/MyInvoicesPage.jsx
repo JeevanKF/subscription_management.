@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { portalApi } from '../../api'
 
 export default function MyInvoicesPage() {
@@ -36,8 +37,12 @@ export default function MyInvoicesPage() {
               <tr><td colSpan={5} className="text-center text-muted">No invoices found.</td></tr>
             )}
             {invoices.map(inv => (
-              <tr key={inv.id}>
-                <td><code>{inv.number}</code></td>
+              <tr key={inv.uuid || inv.id}>
+                <td>
+                  <Link to={`/billing/invoices/${inv.uuid}`} className="fw-bold text-decoration-none">
+                    <code>{inv.number}</code>
+                  </Link>
+                </td>
                 <td>{inv.period_start} → {inv.period_end}</td>
                 <td>{Number(inv.total).toLocaleString()}</td>
                 <td>{Number(inv.balance_due).toLocaleString()}</td>

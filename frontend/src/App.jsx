@@ -13,6 +13,7 @@ import DashboardPage        from './pages/DashboardPage'
 import ProductsPage         from './pages/ProductsPage'
 import SubscriptionsPage    from './pages/SubscriptionsPage'
 import BillingPage          from './pages/BillingPage'
+import InvoiceDetailPage    from './pages/InvoiceDetailPage'
 import MySubscriptionsPage  from './pages/portal/MySubscriptionsPage'
 import MyInvoicesPage       from './pages/portal/MyInvoicesPage'
 
@@ -56,6 +57,11 @@ function AppRoutes() {
           <Route path="/billing" element={
             <ProtectedRoute roles={['admin', 'staff']}>
               <BillingPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/billing/invoices/:uuid" element={
+            <ProtectedRoute roles={['admin', 'staff', 'customer']}>
+              <InvoiceDetailPage />
             </ProtectedRoute>
           } />
 
