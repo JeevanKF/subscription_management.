@@ -44,6 +44,9 @@
           <li class="nav-item">
             <a class="nav-link" href="{% url 'billing:invoice_list' %}">
               <i class="bi bi-receipt"></i> Billing
+              {% if overdue_invoice_count %}
+                <span class="badge bg-danger ms-1">{{ overdue_invoice_count }}</span>
+              {% endif %}
             </a>
           </li>
         {% else %}
