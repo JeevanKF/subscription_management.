@@ -71,6 +71,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "billing.context_processors.overdue_count",
             ],
         },
     },
@@ -79,19 +80,29 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # ─── Database — Neon PostgreSQL, credentials from .env ────────────────────────
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("DB_NAME", "neondb"),
-        "USER": os.environ.get("DB_USER", "neondb_owner"),
-        "PASSWORD": os.environ.get("DB_PASSWORD", ""),
-        "HOST": os.environ.get("DB_HOST", ""),
-        "PORT": os.environ.get("DB_PORT", "5432"),
-        "OPTIONS": {
-            "sslmode": os.environ.get("DB_SSLMODE", "require"),
-        },
+# Falls back to a local SQLite file when no DB_HOST is configured, so the app
+# runs without a Postgres instance on a fresh checkout.
+if os.environ.get("DB_HOST"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("DB_NAME", "neondb"),
+            "USER": os.environ.get("DB_USER", "neondb_owner"),
+            "PASSWORD": os.environ.get("DB_PASSWORD", ""),
+            "HOST": os.environ.get("DB_HOST", ""),
+            "PORT": os.environ.get("DB_PORT", "5432"),
+            "OPTIONS": {
+                "sslmode": os.environ.get("DB_SSLMODE", "require"),
+            },
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # ─── Django REST Framework ─────────────────────────────────────────────────────
 REST_FRAMEWORK = {
@@ -114,6 +125,10 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "accounts:home"
+LOGOUT_REDIRECT_URL = "accounts:login"
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},

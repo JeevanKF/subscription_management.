@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ invoice.number }} · Brightloop SMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">{{ invoice.number }}</h3>
+  <span class="badge
+    {% if invoice.status == 'paid' %}bg-success
+    {% elif invoice.status == 'overdue' %}bg-danger
+    {% elif invoice.status == 'sent' %}bg-info text-dark
+    {% elif invoice.status == 'cancelled' %}bg-secondary
+    {% else %}bg-light text-dark{% endif %} fs-6">
+    {{ invoice.get_status_display }}
+  </span>
+</div>
+
+<p class="text-muted">
+  Subscription
+  <a href="{% url 'subscriptions:detail' invoice.subscription.pk %}">{{ invoice.subscription.number }}</a>
+  &middot; {{ invoice.subscription.customer.get_full_name|default:invoice.subscription.customer.username }}
+</p>
+
+<div class="table-responsive">
+  <table class="table table-sm">
+    <thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Tax %</th><th>Line total</th></tr></thead>
+    <tbody>
+      {% for line in invoice.lines.all %}
+        <tr>
+          <td>{{ line.description }}</td>
+          <td>{{ line.quantity }}</td>
+          <td>₹{{ line.unit_price }}</td>
+          <td>{{ line.tax_rate }}%</td>
+          <td>₹{{ line.line_total }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><th colspan="4" class="text-end">Subtotal</th><th>₹{{ invoice.subtotal }}</th></tr>
+      <tr><th colspan="4" class="text-end">Tax</th><th>₹{{ invoice.tax_total }}</th></tr>
+      <tr><th colspan="4" class="text-end">Total</th><th>₹{{ invoice.total }}</th></tr>
+      <tr><th colspan="4" class="text-end">Balance due</th><th>₹{{ invoice.balance_due|floatformat:2 }}</th></tr>
+    </tfoot>
+  </table>
+</div>
+
+<h5 class="mt-4">Payments</h5>
+{% if invoice.payments.all %}
+  <ul class="list-group">
+    {% for payment in invoice.payments.all %}
+      <li class="list-group-item d-flex justify-content-between">
+        <span>{{ payment.payment_date }} &mdash; {{ payment.note|default:"Payment" }}</span>
+        <span class="fw-semibold">₹{{ payment.amount }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  {% include "partials/empty_state.html" with icon="bi-cash" title="No payments recorded" %}
+{% endif %}
+
+<a href="{% url 'billing:invoice_list' %}" class="btn btn-outline-secondary mt-3">
+  <i class="bi bi-arrow-left"></i> Back to invoices
+</a>
+{% endblock %}

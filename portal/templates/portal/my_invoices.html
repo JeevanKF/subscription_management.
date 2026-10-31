@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}My Invoices · Brightloop SMS{% endblock %}
+
+{% block content %}
+<h3 class="mb-3"><i class="bi bi-receipt"></i> My Invoices</h3>
+
+{% if invoices %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr><th>Number</th><th>Subscription</th><th>Period</th><th>Status</th><th>Total</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for invoice in invoices %}
+          <tr>
+            <td>{{ invoice.number }}</td>
+            <td>{{ invoice.subscription.number }}</td>
+            <td>{{ invoice.period_start }} &rarr; {{ invoice.period_end }}</td>
+            <td>
+              <span class="badge
+                {% if invoice.status == 'paid' %}bg-success
+                {% elif invoice.status == 'overdue' %}bg-danger
+                {% elif invoice.status == 'sent' %}bg-info text-dark
+                {% elif invoice.status == 'cancelled' %}bg-secondary
+                {% else %}bg-light text-dark{% endif %}">
+                {{ invoice.get_status_display }}
+              </span>
+            </td>
+            <td>₹{{ invoice.total }}</td>
+            <td>
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'portal:invoice_detail' invoice.pk %}">
+                <i class="bi bi-eye"></i> View
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  {% include "partials/empty_state.html" with icon="bi-receipt" title="No invoices yet" message="Invoices for your subscriptions will show up here." %}
+{% endif %}
+{% endblock %}

@@ -10,6 +10,14 @@ from django.urls import path, include
 urlpatterns = [
     path("admin/", admin.site.urls),
 
+    # Template-rendered web UI
+    path("", include("accounts.web_urls")),
+    path("products/", include("products.web_urls")),
+    path("subscriptions/", include("subscriptions.web_urls")),
+    path("billing/", include("billing.web_urls")),
+    path("dashboard/", include("dashboard.web_urls")),
+    path("portal/", include("portal.web_urls")),
+
     # REST API routes
     path("api/auth/",          include("accounts.urls")),
     path("api/products/",      include("products.urls")),

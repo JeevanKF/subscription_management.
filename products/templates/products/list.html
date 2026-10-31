@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Products · Brightloop SMS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0"><i class="bi bi-box-seam"></i> Products</h3>
+</div>
+
+{% if products %}
+  <div class="row g-3">
+    {% for product in products %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <div class="d-flex justify-content-between">
+              <h5 class="card-title">{{ product.name }}</h5>
+              {% if product.is_active %}
+                <span class="badge bg-success align-self-start">Active</span>
+              {% else %}
+                <span class="badge bg-secondary align-self-start">Inactive</span>
+              {% endif %}
+            </div>
+            <p class="card-text text-muted small">{{ product.description|default:"No description." }}</p>
+
+            <h6 class="small text-uppercase text-muted mt-3">Plans</h6>
+            {% if product.plans.all %}
+              <ul class="list-unstyled small mb-0">
+                {% for plan in product.plans.all %}
+                  <li class="d-flex justify-content-between border-bottom py-1">
+                    <span>{{ plan.name }}</span>
+                    <span class="fw-semibold">₹{{ plan.price }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="small text-muted mb-0">No plans configured.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  {% include "partials/empty_state.html" with icon="bi-box-seam" title="No products yet" message="Products created in the admin will show up here." %}
+{% endif %}
+{% endblock %}
