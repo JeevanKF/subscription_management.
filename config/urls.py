@@ -16,6 +16,7 @@ urlpatterns = [
     path("subscriptions/", include("subscriptions.web_urls")),
     path("billing/", include("billing.web_urls")),
     path("dashboard/", include("dashboard.web_urls")),
+    path("portal/", include("portal.web_urls")),
 
     # REST API routes
     path("api/auth/",          include("accounts.urls")),
