@@ -10,4 +10,5 @@ urlpatterns = [
     path("", views_web.subscription_list, name="list"),
     path("export/", views_web.subscription_export, name="export"),
     path("<int:pk>/", views_web.subscription_detail, name="detail"),
+    path("<int:pk>/<slug:action>/", views_web.subscription_action, name="action"),
 ]

@@ -18,7 +18,7 @@
     <div class="card shadow-sm h-100">
       <div class="card-body">
         <h6 class="text-uppercase text-muted small">Customer</h6>
-        <p class="mb-1 fw-semibold">{{ subscription.customer.get_full_name|default:subscription.customer.username }}</p>
+        <p class="mb-1 fw-semibold">{{ subscription.customer.name|default:subscription.customer.email }}</p>
         <p class="mb-0 small text-muted">{{ subscription.customer.email }}</p>
       </div>
     </div>
@@ -26,8 +26,13 @@
   <div class="col-12 col-md-4">
     <div class="card shadow-sm h-100">
       <div class="card-body">
-        <h6 class="text-uppercase text-muted small">Billing</h6>
-        <p class="mb-1 small">Start: {{ subscription.start_date }}</p>
+        <h6 class="text-uppercase text-muted small">Plan &amp; term</h6>
+        <p class="mb-1 fw-semibold">{{ subscription.plan|default:"—" }}</p>
+        <p class="mb-1 small">Start: {{ subscription.start_date }} · Expiry: {{ subscription.expiry_date|default:"open-ended" }}</p>
+        {% if subscription.status == 'quotation' %}
+          <p class="mb-1 small">Quote valid until: {{ subscription.quotation_expiry }}</p>
+        {% endif %}
+        <p class="mb-1 small">Payment terms: {{ subscription.get_payment_terms_display }}</p>
         <p class="mb-0 small">Next billing: {{ subscription.next_billing_date|default:"—" }}</p>
       </div>
     </div>
@@ -42,26 +47,60 @@
   </div>
 </div>
 
-<h5 class="mt-4">Plan lines</h5>
+{% if actions %}
+  <div class="d-flex flex-wrap gap-2 mt-3">
+    {% for name, label, style in actions %}
+      <form method="post" action="{% url 'subscriptions:action' subscription.pk name %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm {{ style }}">{{ label }}</button>
+      </form>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<h5 class="mt-4">Product lines</h5>
 {% if subscription.lines.all %}
   <div class="table-responsive">
     <table class="table table-sm">
-      <thead><tr><th>Plan</th><th>Variant</th><th>Qty</th><th>Unit price</th></tr></thead>
+      <thead><tr><th>Product</th><th>Variant</th><th>Qty</th><th>Unit price</th><th>Tax</th><th class="text-end">Amount</th></tr></thead>
       <tbody>
         {% for line in subscription.lines.all %}
           <tr>
-            <td>{{ line.plan.name }}</td>
+            <td>{{ line.product|default:line.plan.name }}</td>
             <td>{{ line.variant|default:"—" }}</td>
             <td>{{ line.quantity }}</td>
             <td>₹{{ line.unit_price }}</td>
+            <td>{{ line.tax_rule|default:"—" }}</td>
+            <td class="text-end">₹{{ line.amount }}</td>
           </tr>
         {% endfor %}
       </tbody>
+      <tfoot><tr><th colspan="5" class="text-end">Total</th><th class="text-end">₹{{ subscription.total }}</th></tr></tfoot>
     </table>
   </div>
 {% else %}
-  {% include "partials/empty_state.html" with icon="bi-list-ul" title="No plan lines" %}
+  {% include "partials/empty_state.html" with icon="bi-list-ul" title="No product lines" %}
 {% endif %}
+
+<h5 class="mt-4">Status history</h5>
+<div class="table-responsive">
+  <table class="table table-sm">
+    <thead><tr><th>When</th><th>From</th><th>To</th><th>By</th><th>Reason</th></tr></thead>
+    <tbody>
+      {% for change in subscription.status_changes.all %}
+        <tr>
+          <td>{{ change.changed_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ change.get_from_status_display|default:"—" }}</td>
+          <td>{{ change.get_to_status_display }}</td>
+          <td>{{ change.changed_by|default:"System" }}</td>
+          <td>{{ change.reason }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="text-muted">No status changes recorded.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
 <a href="{% url 'subscriptions:list' %}" class="btn btn-outline-secondary mt-3">
   <i class="bi bi-arrow-left"></i> Back to subscriptions

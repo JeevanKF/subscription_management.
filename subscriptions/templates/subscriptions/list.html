@@ -5,12 +5,15 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h3 class="mb-0"><i class="bi bi-arrow-repeat"></i> Subscriptions</h3>
   <a class="btn btn-outline-secondary"
-     href="{% url 'subscriptions:export' %}?status={{ selected_status }}&customer={{ selected_customer }}">
+     href="{% url 'subscriptions:export' %}?q={{ search|urlencode }}&status={{ selected_status }}&plan={{ selected_plan }}&customer={{ selected_customer }}">
     <i class="bi bi-download"></i> Export CSV
   </a>
 </div>
 
 <form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <input type="search" name="q" value="{{ search }}" class="form-control" placeholder="Number or customer">
+  </div>
   <div class="col-auto">
     <select name="status" class="form-select" onchange="this.form.submit()">
       <option value="">All statuses</option>
@@ -24,12 +27,20 @@
       <option value="">All customers</option>
       {% for customer in customers %}
         <option value="{{ customer.id }}" {% if customer.id|stringformat:"s" == selected_customer %}selected{% endif %}>
-          {{ customer.get_full_name|default:customer.username }}
+          {{ customer.name|default:customer.email }}
         </option>
       {% endfor %}
     </select>
   </div>
-  {% if selected_status or selected_customer %}
+  <div class="col-auto">
+    <select name="plan" class="form-select" onchange="this.form.submit()">
+      <option value="">All plans</option>
+      {% for plan in plans %}
+        <option value="{{ plan.id }}" {% if plan.id|stringformat:"s" == selected_plan %}selected{% endif %}>{{ plan }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% if search or selected_status or selected_customer or selected_plan %}
     <div class="col-auto">
       <a href="{% url 'subscriptions:list' %}" class="btn btn-link">Clear filters</a>
     </div>
@@ -43,7 +54,7 @@
         <tr>
           <th>Number</th>
           <th>Customer</th>
-          <th>Plan(s)</th>
+          <th>Plan</th>
           <th>Status</th>
           <th>Start date</th>
           <th>Next billing</th>
@@ -53,9 +64,9 @@
         {% for sub in page_obj %}
           <tr>
             <td><a href="{% url 'subscriptions:detail' sub.pk %}">{{ sub.number }}</a></td>
-            <td>{{ sub.customer.get_full_name|default:sub.customer.username }}</td>
+            <td>{{ sub.customer.name|default:sub.customer.email }}</td>
             <td>
-              {% for line in sub.lines.all %}{{ line.plan.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+              {{ sub.plan.name|default:"—" }}
             </td>
             <td>
               <span class="badge
