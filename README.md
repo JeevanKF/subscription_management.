@@ -148,7 +148,7 @@ brightloop/
 ├── config/          # Django project (settings, urls, wsgi)
 ├── accounts/        # Custom User model + Token auth API
 ├── products/        # Product, Variant, Plan, TaxRule
-├── subscriptions/   # Subscription, SubscriptionLine
+├── subscriptions/   # Subscription lifecycle, quotation templates, status history
 ├── billing/         # Invoice, InvoiceLine, Payment, Discount
 ├── dashboard/       # Finance metrics API (admin/staff)
 ├── portal/          # Customer self-service API
@@ -205,11 +205,18 @@ Vite proxies all `/api/*` requests to Django on port 8000 — no CORS issues in 
 | POST | `/api/auth/logout/` | Delete token |
 | GET | `/api/auth/me/` | Current user profile |
 | GET | `/api/products/` | Product list |
-| GET/POST | `/api/subscriptions/` | Subscription list / create |
+| GET/POST | `/api/subscriptions/` | Subscription list (search/filters) / create |
+| POST | `/api/subscriptions/{id}/send-quote/` … `/close/` | Lifecycle actions (send-quote, confirm, activate, pause, resume, renew, close) |
+| GET | `/api/subscriptions/{id}/history/` | Status history |
+| CRUD | `/api/subscriptions/quotation-templates/` | Quotation templates (+ `/{id}/create-subscription/`) |
 | GET/POST | `/api/billing/invoices/` | Invoice list |
 | GET | `/api/dashboard/` | Finance summary (admin/staff) |
 | GET | `/api/portal/subscriptions/` | Customer's own subscriptions |
 | GET | `/api/portal/invoices/` | Customer's own invoices |
+
+Module guides: [ACCOUNTS_PRODUCTS.md](ACCOUNTS_PRODUCTS.md) (M2) and
+[SUBSCRIPTIONS.md](SUBSCRIPTIONS.md) (M1: lifecycle rules, full API, and open
+integration issues).
 
 ## Roles
 
