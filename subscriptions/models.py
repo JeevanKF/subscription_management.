@@ -3,9 +3,14 @@ subscriptions/models.py
 Subscription, SubscriptionLine — stub definitions.
 """
 
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
 from django.db import models
 from django.conf import settings
 from products.models import Plan, Variant, TaxRule
+
+CYCLE_MONTHS = {"monthly": 1, "quarterly": 3, "annually": 12}
 
 
 class Subscription(models.Model):
@@ -30,6 +35,40 @@ class Subscription(models.Model):
 
     def __str__(self):
         return f"{self.number} — {self.customer}"
+
+    def _cycle_months(self):
+        first_line = self.lines.select_related("plan").first()
+        cycle = first_line.plan.billing_cycle if first_line else Plan.BillingCycle.MONTHLY
+        return CYCLE_MONTHS.get(cycle, 1)
+
+    def accept(self):
+        """Customer accepts a draft quotation — activates the subscription."""
+        if self.status != self.Status.DRAFT:
+            raise ValueError("Only a draft subscription can be accepted.")
+        self.status = self.Status.ACTIVE
+        if not self.next_billing_date:
+            self.next_billing_date = self.start_date + relativedelta(months=self._cycle_months())
+        self.save(update_fields=["status", "next_billing_date", "updated_at"])
+
+    def pause(self):
+        if self.status != self.Status.ACTIVE:
+            raise ValueError("Only an active subscription can be paused.")
+        self.status = self.Status.PAUSED
+        self.save(update_fields=["status", "updated_at"])
+
+    def close(self):
+        if self.status not in (self.Status.ACTIVE, self.Status.PAUSED):
+            raise ValueError("Only an active or paused subscription can be closed.")
+        self.status = self.Status.CLOSED
+        self.save(update_fields=["status", "updated_at"])
+
+    def renew(self):
+        """Reactivates a paused/closed subscription and rolls billing forward."""
+        if self.status not in (self.Status.PAUSED, self.Status.CLOSED):
+            raise ValueError("Only a paused or closed subscription can be renewed.")
+        self.status = self.Status.ACTIVE
+        self.next_billing_date = date.today() + relativedelta(months=self._cycle_months())
+        self.save(update_fields=["status", "next_billing_date", "updated_at"])
 
 
 class SubscriptionLine(models.Model):
