@@ -150,7 +150,7 @@
   if (revenueLabels.length) {
     new Chart(document.getElementById('revenueChart'), {
       type: 'bar',
-      data: { labels: revenueLabels, datasets: [{ label: 'Revenue', data: revenueValues, backgroundColor: '#0d6efd' }] },
+      data: { labels: revenueLabels, datasets: [{ label: 'Revenue', data: revenueValues, backgroundColor: '#6366f1', borderRadius: 6 }] },
       options: { plugins: { legend: { display: false } } },
     });
   }
