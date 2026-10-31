@@ -22,34 +22,46 @@
             </div>
             <ul class="list-unstyled small text-muted mb-3">
               {% for line in sub.lines.all %}
-                <li>{{ line.plan.name }} &times; {{ line.quantity }} — ₹{{ line.unit_price }}</li>
+                <li>{{ line.product|default:line.plan.name }} &times; {{ line.quantity }} — ₹{{ line.unit_price }}</li>
               {% endfor %}
             </ul>
+            <p class="small mb-1">Plan: {{ sub.plan|default:"—" }}</p>
+            {% if sub.status == 'quotation' %}
+              <p class="small mb-1">Quote valid until: {{ sub.quotation_expiry }}</p>
+            {% endif %}
+            {% if sub.expiry_date %}<p class="small mb-1">Expires: {{ sub.expiry_date }}</p>{% endif %}
             <p class="small mb-3">Next billing: {{ sub.next_billing_date|default:"—" }}</p>
 
             <div class="d-flex gap-2">
-              {% if sub.status == 'draft' %}
+              {# Buttons follow the plan's rules; the backend checks them again #}
+              {% if sub.status == 'quotation' %}
                 <form method="post" action="{% url 'portal:accept_subscription' sub.pk %}">
                   {% csrf_token %}
                   <button class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Accept quotation</button>
                 </form>
               {% endif %}
-              {% if sub.status == 'active' %}
+              {% if sub.status == 'active' and sub.plan.pausable %}
                 <form method="post" action="{% url 'portal:pause_subscription' sub.pk %}">
                   {% csrf_token %}
                   <button class="btn btn-sm btn-outline-warning"><i class="bi bi-pause"></i> Pause</button>
                 </form>
-                <form method="post" action="{% url 'portal:close_subscription' sub.pk %}">
+              {% endif %}
+              {% if sub.status == 'paused' %}
+                <form method="post" action="{% url 'portal:resume_subscription' sub.pk %}">
                   {% csrf_token %}
-                  <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i> Close</button>
+                  <button class="btn btn-sm btn-success"><i class="bi bi-play"></i> Resume</button>
                 </form>
               {% endif %}
-              {% if sub.status == 'paused' or sub.status == 'closed' %}
-                <form method="post" action="{% url 'portal:renew_subscription' sub.pk %}">
-                  {% csrf_token %}
-                  <button class="btn btn-sm btn-outline-success"><i class="bi bi-arrow-clockwise"></i> Renew</button>
-                </form>
-                {% if sub.status == 'paused' %}
+              {% if sub.status == 'active' or sub.status == 'closed' %}
+                {% if sub.plan.renewable and sub.expiry_date %}
+                  <form method="post" action="{% url 'portal:renew_subscription' sub.pk %}">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-outline-success"><i class="bi bi-arrow-clockwise"></i> Renew</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+              {% if sub.status == 'active' or sub.status == 'paused' %}
+                {% if sub.plan.closable %}
                   <form method="post" action="{% url 'portal:close_subscription' sub.pk %}">
                     {% csrf_token %}
                     <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i> Close</button>

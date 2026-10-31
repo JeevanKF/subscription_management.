@@ -1,7 +1,7 @@
 """
 portal/views_web.py
 Customer self-service pages: own subscriptions/invoices, plus the
-accept/pause/close/renew actions on their own subscriptions.
+accept/pause/resume/close/renew actions on their own subscriptions.
 """
 
 from django.contrib import messages
@@ -14,7 +14,8 @@ from subscriptions.models import Subscription
 
 @customer_required
 def my_subscriptions(request):
-    subs = Subscription.objects.filter(customer=request.user).prefetch_related("lines__plan")
+    subs = (Subscription.objects.filter(customer=request.user)
+            .select_related("plan").prefetch_related("lines__product", "lines__plan"))
     return render(request, "portal/my_subscriptions.html", {"subscriptions": subs})
 
 
@@ -52,7 +53,8 @@ def _run_action(request, pk, action_name, verb):
     subscription = get_object_or_404(Subscription, pk=pk, customer=request.user)
     if request.method == "POST":
         try:
-            getattr(subscription, action_name)()
+            # actor=request.user: history records the customer, and services checks ownership
+            getattr(subscription, action_name)(actor=request.user)
             messages.success(request, f"Subscription {subscription.number} {verb}.")
         except ValueError as exc:
             messages.error(request, str(exc))
@@ -67,6 +69,11 @@ def accept_subscription(request, pk):
 @customer_required
 def pause_subscription(request, pk):
     return _run_action(request, pk, "pause", "paused")
+
+
+@customer_required
+def resume_subscription(request, pk):
+    return _run_action(request, pk, "resume", "resumed")
 
 
 @customer_required

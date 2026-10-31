@@ -19,7 +19,7 @@
   <h2>Invoice {{ invoice.number }}</h2>
   <p class="text-muted">
     Subscription {{ invoice.subscription.number }} &middot;
-    {{ invoice.subscription.customer.get_full_name|default:invoice.subscription.customer.username }}
+    {{ invoice.subscription.customer.name|default:invoice.subscription.customer.email }}
   </p>
   <p>Period: {{ invoice.period_start }} &rarr; {{ invoice.period_end }}</p>
 
