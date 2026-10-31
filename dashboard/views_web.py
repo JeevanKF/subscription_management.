@@ -50,7 +50,11 @@ def index(request):
     revenue_collected = Payment.objects.aggregate(t=Sum("amount"))["t"] or Decimal("0")
 
     outstanding_invoices = Invoice.objects.exclude(status__in=["paid", "cancelled", "draft"])
-    outstanding = sum((inv.balance_due for inv in outstanding_invoices), Decimal("0"))
+    invoiced_total = outstanding_invoices.aggregate(t=Sum("total"))["t"] or Decimal("0")
+    paid_against_outstanding = (
+        Payment.objects.filter(invoice__in=outstanding_invoices).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    )
+    outstanding = invoiced_total - paid_against_outstanding
 
     overdue_qs = _apply_filters(
         Invoice.objects.filter(status="overdue").select_related("subscription__customer"),

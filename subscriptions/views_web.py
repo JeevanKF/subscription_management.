@@ -68,7 +68,7 @@ def subscription_export(request):
 
     writer = csv.writer(response)
     writer.writerow(["Number", "Customer", "Status", "Start date", "Next billing date"])
-    for sub in qs.iterator():
+    for sub in qs.iterator(chunk_size=500):
         writer.writerow([
             sub.number,
             sub.customer.get_full_name() or sub.customer.username,
