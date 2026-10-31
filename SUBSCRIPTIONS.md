@@ -76,48 +76,44 @@ Staff pages: `/subscriptions/` (search, status/plan/customer filters, CSV) and
 ## Integration walkthrough (2026-10-31)
 
 Journey run against the merged branch (M1 + M2 + M3 + M4):
+customer/product/plan → subscription → send quote → customer accepts in the portal →
+activate → billing run (idempotent) → confirm invoice → payment → dashboard → portal,
+with a second customer checked to see nothing. Every step passes;
+`subscriptions.tests.CrossModuleJourneyTests` repeats it on each test run.
 
-| Step | Result |
-|---|---|
-| Customer, product, plan (M2) | OK |
-| Create subscription → send quote → confirm → activate (M1) | OK |
-| `billing.calculate_invoice_totals` (M3) | OK, 1888.00 for 2 × 800 + 18% |
-| `billing.run_billing` (M3) | **Fails**, see 1 and 3 |
-| `/api/dashboard/` (M4) | OK |
-| `/dashboard/` page (M4) | **Fails**, see 1 |
-| Portal API and pages, customer scoping (M4) | OK; another customer sees nothing |
-| Staff pages: subscriptions, invoices, products, customers | OK |
+### Fixed during integration (cross-module)
 
-### Open issues for module owners
+The first walkthrough failed in billing and the dashboard. These were fixed on
+`M1-progress` with the team's go-ahead; module owners should review:
 
-1. **`Plan.billing_cycle` no longer exists** (M2 renamed it to `billing_period`:
-   daily/weekly/monthly/yearly). Still used in `billing/services.py:211`
-   (`run_billing`), `billing.services.calculate_period` (expects
-   monthly/quarterly/annually, so daily and weekly need adding),
-   `dashboard/views_web.py:23` (MRR), `dashboard/management/commands/seed_data.py`, `billing/tests.py`.
-   Owners: M3, M4.
-2. **`User.username` / `first_name` / `get_full_name` no longer exist** (M2 uses
-   `name` + `email`). Still used in `billing/serializers.py` (63, 85, 101, 133),
-   `billing/services.py` (236, 292, 460, 497), `billing/views.py:85` (search),
-   billing/dashboard/portal templates, `seed_data.py`, and `billing/tests.py`
-   (`create_user(username=...)`, which is why 5 billing tests error). Owners: M3, M4.
-3. **Typo in billing line dict**: `billing/services.py` around line 131 builds the key
-   `"des   pricecription"` but line 266 reads `l["description"]`, so a real billing
-   run raises `KeyError` even after 1 is fixed. Owner: M3.
-4. **Invoice lines should use `line.product`**: billing builds the description
-   from `line.plan.product.name`. `plan.product` is optional in M2, so this crashes
-   for plans with no product. Use `line.product.name` (the line's product is now
-   always set). Owner: M3.
-5. **Portal "Accept" button**: `portal/templates/portal/my_subscriptions.html:31`
-   shows Accept for `draft`. Customers accept a **quotation**, so the check should be
-   `sub.status == 'quotation'`. The model's `accept()` already maps to confirm.
-   Owner: M4.
-6. **Duplicate auth pages**: M4's `accounts/views_web.py` and `accounts/web_urls.py`, and
+1. **`Plan.billing_cycle` → `billing_period`** (M2 rename). Billing's `run_billing`
+   reads the subscription's plan, and `calculate_period` supports
+   daily/weekly/monthly/yearly while keeping quarterly/annually.
+   The dashboard MRR converts each billing period to a monthly amount. (M3, M4)
+2. **`User.username` → `name`/`email`** (M2 change), in billing serializers, services,
+   CSV exports, invoice search, and billing/dashboard/portal templates. (M3, M4)
+3. **Billing line key typo** `"des   pricecription"` → `"description"`, which made every
+   real billing run raise `KeyError`. Invoice lines now name `line.product`. (M3)
+4. **Billing tests** now create users by email and plans with `billing_period`;
+   added a daily/weekly/yearly period test. (M3)
+5. **`seed_data`** creates customers by email/name, variants as attribute/value,
+   plans with `billing_period`, and subscriptions with a plan, line products, SUB-0001
+   numbering and some quotations. (M4)
+6. **Portal**: Accept shows for quotations (not drafts). Pause, renew and close only show
+   when the plan allows them. Added Resume. Actions pass the customer as the actor,
+   so history records who did it and ownership is checked. (M4)
+
+### Still open
+
+1. **Duplicate auth pages**: M4's `accounts/views_web.py` and `accounts/web_urls.py`, and
    `products/views_web.py` and `products/web_urls.py`, duplicate M2's pages under the same
-   URL namespaces, so they are unmounted in `config/urls.py`. They can be deleted
-   once M4 agrees. Owners: M2, M4.
-7. **Auth scheme**: the architecture says JWT, but the code (M2) uses DRF
+   URL namespaces, so they are unmounted in `config/urls.py`. They can be deleted once
+   M4 agrees. (M2, M4)
+2. **Auth scheme**: the architecture says JWT, but the code (M2) uses DRF
    `TokenAuthentication`. Subscriptions follows the code. Team decision needed.
-8. **`config/settings.py` / `manage.py`** carry a hard-coded
+3. **`config/settings.py` / `manage.py`** carry a hard-coded
    `C:\Users\lenovo\...\python.exe` path (from the billing update commit). It's harmless
-   but machine-specific. Owner: M3.
+   but machine-specific. (M3)
+4. **React frontend** (`frontend/src/api/subscriptions.js`, `SubscriptionsPage.jsx`) hasn't
+   been updated for the new statuses and action endpoints; the server-rendered pages
+   are up to date.

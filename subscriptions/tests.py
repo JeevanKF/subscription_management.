@@ -537,3 +537,53 @@ class StaffPageTests(SubscriptionTestBase):
         self.client.force_login(self.customer)
         self.assertEqual(self.client.get(f"/subscriptions/{sub.pk}/").status_code, 403)
         self.assertEqual(self.client.post(f"/subscriptions/{sub.pk}/close/").status_code, 403)
+
+
+class CrossModuleJourneyTests(SubscriptionTestBase):
+    """Subscription → billing → payment → dashboard → portal, with the real modules."""
+
+    def test_full_journey(self):
+        from billing import services as billing
+        from billing.models import Invoice
+
+        sub = self.make()
+        services.send_quote(sub, actor=self.staff)
+
+        self.client.force_login(self.customer)
+        self.assertContains(self.client.get("/portal/subscriptions/"), "Accept quotation")
+        self.client.post(f"/portal/subscriptions/{sub.pk}/accept/")
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, Status.CONFIRMED)
+        self.assertEqual(sub.status_changes.last().changed_by, self.customer)
+
+        services.activate_subscription(sub, actor=self.staff)
+        billing.run_billing(target_date=TODAY, actor=self.staff)
+        billing.run_billing(target_date=TODAY, actor=self.staff)     # idempotent
+        invoice = Invoice.objects.get(subscription=sub)
+        self.assertEqual(invoice.total, Decimal("1888.00"))
+        self.assertEqual(invoice.lines.get().description, "CRM Suite - CRM Monthly")
+        sub.refresh_from_db()
+        self.assertGreater(sub.next_billing_date, TODAY)
+
+        billing.confirm_invoice(invoice, actor=self.staff)
+        billing.record_payment(invoice_uuid=str(invoice.uuid), amount=invoice.total, payment_date=TODAY,
+                               recorded_by=self.staff)
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.status, "paid")
+
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.get("/dashboard/").status_code, 200)
+        self.assertContains(self.client.get("/billing/invoices/"), "Asha")
+
+        self.client.force_login(self.customer)
+        self.assertContains(self.client.get("/portal/invoices/"), invoice.number)
+        self.client.force_login(self.other)
+        self.assertNotContains(self.client.get("/portal/invoices/"), invoice.number)
+
+    def test_portal_respects_plan_rules(self):
+        sub = self.make_active(plan=self.locked_plan)
+        self.client.force_login(self.customer)
+        self.assertNotContains(self.client.get("/portal/subscriptions/"), "bi-pause")
+        self.client.post(f"/portal/subscriptions/{sub.pk}/pause/")
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, Status.ACTIVE)
