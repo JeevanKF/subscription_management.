@@ -1,6 +1,6 @@
 """products/serializers.py"""
 from rest_framework import serializers
-from .models import Product, Variant, Plan, TaxRule
+from .models import Product, ProductVariant, Plan, TaxRule
 
 
 class TaxRuleSerializer(serializers.ModelSerializer):
@@ -11,7 +11,7 @@ class TaxRuleSerializer(serializers.ModelSerializer):
 
 class VariantSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Variant
+        model = ProductVariant
         fields = "__all__"
 
 
@@ -27,5 +27,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ["id", "name", "description", "is_active", "created_at", "variants", "plans"]
-
+        fields = [
+            "id", "name", "product_type", "sales_price", "cost_price", "tax_rule",
+            "notes", "is_active", "created_at", "variants", "plans",
+        ]
