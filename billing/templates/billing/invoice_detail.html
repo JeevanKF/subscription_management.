@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h3 class="mb-0">{{ invoice.number }}</h3>
+  <h1 class="h3 mb-0">{{ invoice.number }}</h1>
   <span class="badge
     {% if invoice.status == 'paid' %}bg-success
     {% elif invoice.status == 'overdue' %}bg-danger
