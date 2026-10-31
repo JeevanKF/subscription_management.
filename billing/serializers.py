@@ -60,7 +60,7 @@ class InvoiceLineSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    recorded_by_name = serializers.CharField(source="recorded_by.username", read_only=True)
+    recorded_by_name = serializers.CharField(source="recorded_by.name", read_only=True)
     invoice_number = serializers.CharField(source="invoice.number", read_only=True)
 
     class Meta:
@@ -82,7 +82,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 
 class InvoiceStatusChangeSerializer(serializers.ModelSerializer):
-    changed_by_name = serializers.CharField(source="changed_by.username", read_only=True)
+    changed_by_name = serializers.CharField(source="changed_by.name", read_only=True)
 
     class Meta:
         model = InvoiceStatusChange
@@ -98,7 +98,7 @@ class InvoiceStatusChangeSerializer(serializers.ModelSerializer):
 
 class InvoiceListSerializer(serializers.ModelSerializer):
     """Lighter serializer for fast list views."""
-    customer_name = serializers.CharField(source="subscription.customer.username", read_only=True)
+    customer_name = serializers.CharField(source="subscription.customer.name", read_only=True)
     customer_email = serializers.CharField(source="subscription.customer.email", read_only=True)
     subscription_number = serializers.CharField(source="subscription.number", read_only=True)
     total_paid = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -130,7 +130,7 @@ class InvoiceListSerializer(serializers.ModelSerializer):
 
 class InvoiceDetailSerializer(serializers.ModelSerializer):
     """Full detail serializer with nested lines, payments, and history."""
-    customer_name = serializers.CharField(source="subscription.customer.username", read_only=True)
+    customer_name = serializers.CharField(source="subscription.customer.name", read_only=True)
     customer_email = serializers.CharField(source="subscription.customer.email", read_only=True)
     subscription_number = serializers.CharField(source="subscription.number", read_only=True)
     lines = InvoiceLineSerializer(many=True, read_only=True)

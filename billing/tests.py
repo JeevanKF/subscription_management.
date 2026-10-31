@@ -53,15 +53,23 @@ class BillingDateMathsTestCase(TestCase):
         self.assertEqual(next_start, date(2027, 1, 1))
 
 
+    def test_plan_billing_periods(self):
+        """Plan.billing_period values: daily, weekly, yearly."""
+        start = date(2026, 1, 1)
+        self.assertEqual(calculate_period(start, "daily")[2], date(2026, 1, 2))
+        self.assertEqual(calculate_period(start, "weekly")[2], date(2026, 1, 8))
+        self.assertEqual(calculate_period(start, "yearly")[1], date(2026, 12, 31))
+
+
 class BillingCalculationTestCase(TestCase):
     def setUp(self):
-        self.customer = User.objects.create_user(username="cust1", password="pw", role="customer")
+        self.customer = User.objects.create_user(email="cust1@test.com", password="pw", name="cust1", role="customer")
         self.tax18 = TaxRule.objects.create(name="GST 18%", rate=Decimal("18.00"))
         self.prod = Product.objects.create(name="Cloud SMS")
         self.plan = Plan.objects.create(
             product=self.prod,
             name="Starter",
-            billing_cycle="monthly",
+            billing_period="monthly",
             price=Decimal("4500.00"),
         )
         self.sub = Subscription.objects.create(
@@ -104,13 +112,13 @@ class BillingCalculationTestCase(TestCase):
 
 class BillingRunIdempotencyTestCase(TestCase):
     def setUp(self):
-        self.customer = User.objects.create_user(username="cust2", password="pw", role="customer")
+        self.customer = User.objects.create_user(email="cust2@test.com", password="pw", name="cust2", role="customer")
         self.tax18 = TaxRule.objects.create(name="GST 18%", rate=Decimal("18.00"))
         self.prod = Product.objects.create(name="Cloud SMS")
         self.plan = Plan.objects.create(
             product=self.prod,
             name="Starter",
-            billing_cycle="monthly",
+            billing_period="monthly",
             price=Decimal("1000.00"),
         )
         self.sub = Subscription.objects.create(
@@ -158,8 +166,8 @@ class BillingRunIdempotencyTestCase(TestCase):
 
 class PaymentServiceTestCase(TestCase):
     def setUp(self):
-        self.customer = User.objects.create_user(username="cust3", password="pw", role="customer")
-        self.staff = User.objects.create_user(username="staff1", password="pw", role="staff")
+        self.customer = User.objects.create_user(email="cust3@test.com", password="pw", name="cust3", role="customer")
+        self.staff = User.objects.create_user(email="staff1@test.com", password="pw", name="staff1", role="staff")
         self.sub = Subscription.objects.create(
             customer=self.customer,
             number="SUB-0003",

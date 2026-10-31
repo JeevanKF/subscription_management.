@@ -82,7 +82,9 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
 
         search = self.request.query_params.get("search")
         if search:
-            qs = qs.filter(number__icontains=search) | qs.filter(subscription__customer__username__icontains=search)
+            qs = (qs.filter(number__icontains=search)
+                      | qs.filter(subscription__customer__name__icontains=search)
+                      | qs.filter(subscription__customer__email__icontains=search))
 
         return qs.order_by("-created_at")
 

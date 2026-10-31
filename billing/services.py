@@ -41,18 +41,25 @@ def round_curr(amount: Decimal) -> Decimal:
 
 # ─── 1. Date Maths ────────────────────────────────────────────────────────────
 
+# Keys are Plan.billing_period values (daily/weekly/monthly/yearly);
+# "quarterly"/"annually" are kept for older callers.
+PERIOD_DELTAS = {
+    "daily": relativedelta(days=1),
+    "weekly": relativedelta(weeks=1),
+    "monthly": relativedelta(months=1),
+    "quarterly": relativedelta(months=3),
+    "yearly": relativedelta(years=1),
+    "annually": relativedelta(years=1),
+}
+
+
 def calculate_period(start_date: date, billing_cycle: str) -> tuple[date, date, date]:
     """
-    Given a period start date and billing cycle, compute:
+    Given a period start date and billing period, compute:
     (period_start, period_end, next_period_start)
     Handles month-end dates safely (e.g., Jan 31 -> Feb 28 -> Mar 31).
     """
-    if billing_cycle == "annually":
-        delta = relativedelta(years=1)
-    elif billing_cycle == "quarterly":
-        delta = relativedelta(months=3)
-    else:  # default monthly
-        delta = relativedelta(months=1)
+    delta = PERIOD_DELTAS.get(billing_cycle, relativedelta(months=1))  # default monthly
 
     next_start = start_date + delta
     period_end = next_start - relativedelta(days=1)
@@ -110,7 +117,7 @@ def calculate_invoice_totals(subscription: Subscription, discount_code: str = No
         except Discount.DoesNotExist:
             discount_obj = None
 
-    sub_lines = list(subscription.lines.select_related("plan__product", "tax_rule").all())
+    sub_lines = list(subscription.lines.select_related("product", "plan__product", "tax_rule").all())
 
     # First pass: calculate line subtotals & product-specific discounts
     for line in sub_lines:
@@ -121,7 +128,7 @@ def calculate_invoice_totals(subscription: Subscription, discount_code: str = No
 
         line_disc = Decimal("0.00")
         if discount_obj and discount_obj.scope == Discount.Scope.SPECIFIC_PRODUCT:
-            if discount_obj.product_id == line.plan.product_id:
+            if discount_obj.product_id == (line.product_id or line.plan.product_id):
                 if discount_obj.discount_type == Discount.DiscountType.PERCENT:
                     line_disc = round_curr(line_sub * (discount_obj.value / Decimal("100")))
                 else:
@@ -129,7 +136,7 @@ def calculate_invoice_totals(subscription: Subscription, discount_code: str = No
 
         lines_data.append({
             "line_ref": line,
-            "des   pricecription": f"{line.plan.product.name} - {line.plan.name}",
+            "description": f"{line.product or line.plan.product or line.plan.name} - {line.plan.name}",
             "quantity": qty,
             "unit_price": price,
             "subtotal": line_sub,
@@ -199,16 +206,16 @@ def run_billing(target_date: date = None, dry_run: bool = False, actor=None) -> 
                 status=Subscription.Status.ACTIVE,
                 next_billing_date__lte=target_date,
             )
-            .select_related("customer")
-            .prefetch_related("lines__plan__product", "lines__tax_rule")
+            .select_related("customer", "plan")
+            .prefetch_related("lines__product", "lines__plan__product", "lines__tax_rule")
         )
 
         for sub in due_subs:
             period_start = sub.next_billing_date or target_date
 
-            # Determine dominant cycle from lines (default monthly)
-            first_line = sub.lines.first()
-            cycle = first_line.plan.billing_cycle if first_line else "monthly"
+            # Billing period comes from the subscription's plan (default monthly)
+            plan = sub.plan or (sub.lines.first().plan if sub.lines.exists() else None)
+            cycle = plan.billing_period if plan else "monthly"
             p_start, p_end, next_start = calculate_period(period_start, cycle)
 
             # Check if active invoice already exists for this period
@@ -233,7 +240,7 @@ def run_billing(target_date: date = None, dry_run: bool = False, actor=None) -> 
                 created_invoices.append({
                     "subscription_id": sub.id,
                     "subscription_number": sub.number,
-                    "customer": sub.customer.username,
+                    "customer": sub.customer.name or sub.customer.email,
                     "period_start": p_start,
                     "period_end": p_end,
                     "subtotal": calc["subtotal"],
@@ -289,7 +296,7 @@ def run_billing(target_date: date = None, dry_run: bool = False, actor=None) -> 
                 "uuid": str(invoice.uuid),
                 "number": invoice.number,
                 "subscription_number": sub.number,
-                "customer": sub.customer.username,
+                "customer": sub.customer.name or sub.customer.email,
                 "period": f"{p_start} to {p_end}",
                 "total": invoice.total,
             })
@@ -457,7 +464,7 @@ def export_invoices_csv(queryset) -> str:
     for inv in queryset.select_related("subscription__customer"):
         writer.writerow([
             inv.number,
-            inv.subscription.customer.username,
+            inv.subscription.customer.name or inv.subscription.customer.email,
             inv.subscription.number,
             inv.period_start,
             inv.period_end,
@@ -494,7 +501,7 @@ def export_payments_csv(queryset) -> str:
             p.payment_date,
             p.method,
             p.reference,
-            p.recorded_by.username if p.recorded_by else "",
+            (p.recorded_by.name or p.recorded_by.email) if p.recorded_by else "",
         ])
     return output.getvalue()
 

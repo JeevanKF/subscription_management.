@@ -37,7 +37,7 @@
         {% for invoice in page_obj %}
           <tr>
             <td><a href="{% url 'billing:invoice_detail' invoice.pk %}">{{ invoice.number }}</a></td>
-            <td>{{ invoice.subscription.customer.get_full_name|default:invoice.subscription.customer.username }}</td>
+            <td>{{ invoice.subscription.customer.name|default:invoice.subscription.customer.email }}</td>
             <td>{{ invoice.period_start }} &rarr; {{ invoice.period_end }}</td>
             <td>
               <span class="badge
