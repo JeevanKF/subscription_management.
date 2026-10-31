@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ label }} · Brightloop SMS{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card border-danger">
+      <div class="card-body">
+        <h1 class="h4">Delete {{ label }} "{{ object }}"?</h1>
+        <p>This can't be undone. If it's still used elsewhere it can't be deleted: mark it inactive instead.</p>
+        <form method="post" class="d-flex gap-2">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Yes, delete</button>
+          <a class="btn btn-outline-secondary" href="{{ cancel_url }}">Cancel</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{% if product.pk %}Edit product{% else %}New product{% endif %} · Brightloop SMS{% endblock %}
+{% block content %}
+<nav class="small mb-2"><a href="{% url 'products:list' %}">&larr; Products</a></nav>
+<h1 class="h3 mb-3">{% if product.pk %}Edit {{ product.name }}{% else %}New product{% endif %}</h1>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="card card-body">
+        {% include "accounts/_form_fields.html" %}
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="card card-body">
+        <h2 class="h5">Variants</h2>
+        <p class="form-text mt-0">e.g. Attribute "Brand", value "Odoo", extra price 560. Leave a row empty to skip it.</p>
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}
+          <div class="alert alert-danger">{% for error in formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}</div>
+        {% endif %}
+        <div class="table-responsive">
+          <table class="table table-sm align-top">
+            <thead><tr><th>Attribute</th><th>Value</th><th>Extra price (₹)</th><th>Remove</th></tr></thead>
+            <tbody>
+              {% for vform in formset %}
+                <tr>
+                  {% for hidden in vform.hidden_fields %}{{ hidden }}{% endfor %}
+                  <td>{{ vform.attribute }}{% for e in vform.attribute.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td>
+                  <td>{{ vform.value }}{% for e in vform.value.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td>
+                  <td>{{ vform.extra_price }}{% for e in vform.extra_price.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td>
+                  <td class="text-center">{% if vform.instance.pk %}{{ vform.DELETE }}{% endif %}</td>
+                </tr>
+                {% if vform.non_field_errors %}
+                  <tr><td colspan="4">{% for e in vform.non_field_errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td></tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="form-text mb-0">Need more rows? Save, then edit again: two empty rows are added each time.</p>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex gap-2 mt-3">
+    <button type="submit" class="btn btn-primary">Save product</button>
+    <a class="btn btn-outline-secondary" href="{% if product.pk %}{% url 'products:product_detail' product.pk %}{% else %}{% url 'products:list' %}{% endif %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

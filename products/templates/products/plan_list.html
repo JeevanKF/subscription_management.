@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Plans · Brightloop SMS{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Plans</h1>
+  {% if user.role == "admin" %}
+    <a class="btn btn-primary" href="{% url 'products:plan_create' %}"><i class="bi bi-plus-lg"></i> New plan</a>
+  {% endif %}
+</div>
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead>
+      <tr><th>Name</th><th>Product</th><th class="text-end">Price</th><th>Billing</th><th class="text-end">Min qty</th><th>Available</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for plan in page %}
+        <tr>
+          <td><a href="{% url 'products:plan_detail' plan.pk %}">{{ plan.name }}</a></td>
+          <td>{{ plan.product|default:"Any" }}</td>
+          <td class="text-end">₹{{ plan.price }}</td>
+          <td>{{ plan.get_billing_period_display }}</td>
+          <td class="text-end">{{ plan.min_quantity }}</td>
+          <td class="small">{{ plan.start_date|date:"d M Y"|default:"Any time" }} – {{ plan.end_date|date:"d M Y"|default:"no end" }}</td>
+          <td>
+            {% if plan.is_available %}<span class="badge bg-success">Available</span>
+            {% else %}<span class="badge bg-secondary">Not available</span>{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="text-muted">No plans yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include "accounts/_pagination.html" %}
+{% endblock %}

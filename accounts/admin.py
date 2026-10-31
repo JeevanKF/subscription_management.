@@ -1,5 +1,6 @@
 """
 accounts/admin.py
+Django admin (/django-admin/) is for the team's own debugging only.
 """
 
 from django.contrib import admin
@@ -9,11 +10,19 @@ from .models import User
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ("username", "email", "role", "is_active")
+    ordering = ("email",)
+    list_display = ("email", "name", "role", "company", "is_active")
     list_filter = ("role", "is_active")
-    fieldsets = BaseUserAdmin.fieldsets + (
-        ("Brightloop Role", {"fields": ("role",)}),
+    search_fields = ("email", "name", "company")
+    fieldsets = (
+        (None, {"fields": ("email", "password")}),
+        ("Profile", {"fields": ("name", "role", "company", "phone", "address")}),
+        ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
+        ("Dates", {"fields": ("last_login", "date_joined")}),
     )
-    add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ("Brightloop Role", {"fields": ("role",)}),
+    add_fieldsets = (
+        (None, {
+            "classes": ("wide",),
+            "fields": ("email", "name", "role", "password1", "password2"),
+        }),
     )

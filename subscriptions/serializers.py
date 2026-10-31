@@ -11,7 +11,7 @@ class SubscriptionLineSerializer(serializers.ModelSerializer):
 
 class SubscriptionSerializer(serializers.ModelSerializer):
     lines = SubscriptionLineSerializer(many=True, read_only=True)
-    customer_name = serializers.CharField(source="customer.username", read_only=True)
+    customer_name = serializers.CharField(source="customer.name", read_only=True)
 
     class Meta:
         model = Subscription

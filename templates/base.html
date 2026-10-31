@@ -24,55 +24,93 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navMenu">
+      {# "{% url ... as x %}" gives an empty string instead of crashing when an app has no pages yet #}
+      {% url 'dashboard:index' as dashboard_url %}
+      {% url 'subscriptions:list' as subscriptions_url %}
+      {% url 'billing:invoice_list' as invoices_url %}
+      {% url 'portal:my_subscriptions' as my_subscriptions_url %}
+      {% url 'portal:my_invoices' as my_invoices_url %}
       <ul class="navbar-nav me-auto">
         {% if user.role == "admin" or user.role == "staff" %}
+          {% if dashboard_url %}
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'dashboard:index' %}">
+            <a class="nav-link" href="{{ dashboard_url }}">
               <i class="bi bi-speedometer2"></i> Dashboard
             </a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'products:list' %}">
-              <i class="bi bi-box-seam"></i> Products
+          {% endif %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+              <i class="bi bi-box-seam"></i> Catalog
             </a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="{% url 'products:list' %}">Products</a></li>
+              <li><a class="dropdown-item" href="{% url 'products:plan_list' %}">Plans</a></li>
+              <li><a class="dropdown-item" href="{% url 'products:tax_list' %}">Tax rules</a></li>
+            </ul>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'subscriptions:list' %}">
+            <a class="nav-link" href="{% url 'accounts:customer_list' %}">
+              <i class="bi bi-people"></i> Customers
+            </a>
+          </li>
+          {% if subscriptions_url %}
+          <li class="nav-item">
+            <a class="nav-link" href="{{ subscriptions_url }}">
               <i class="bi bi-arrow-repeat"></i> Subscriptions
             </a>
           </li>
+          {% endif %}
+          {% if invoices_url %}
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'billing:invoice_list' %}">
+            <a class="nav-link" href="{{ invoices_url }}">
               <i class="bi bi-receipt"></i> Billing
               {% if overdue_invoice_count %}
                 <span class="badge bg-danger ms-1">{{ overdue_invoice_count }}</span>
               {% endif %}
             </a>
           </li>
-        {% else %}
+          {% endif %}
+          {% if user.role == "admin" %}
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'portal:my_subscriptions' %}">
+            <a class="nav-link" href="{% url 'accounts:staff_list' %}">
+              <i class="bi bi-person-badge"></i> Staff
+            </a>
+          </li>
+          {% endif %}
+        {% else %}
+          {% if my_subscriptions_url %}
+          <li class="nav-item">
+            <a class="nav-link" href="{{ my_subscriptions_url }}">
               <i class="bi bi-arrow-repeat"></i> My Subscriptions
             </a>
           </li>
+          {% endif %}
+          {% if my_invoices_url %}
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'portal:my_invoices' %}">
+            <a class="nav-link" href="{{ my_invoices_url }}">
               <i class="bi bi-receipt"></i> My Invoices
             </a>
           </li>
+          {% endif %}
         {% endif %}
       </ul>
       <ul class="navbar-nav">
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
             <i class="bi bi-person-circle"></i>
-            {{ user.username }}
+            {{ user.name|default:user.email }}
             <span class="badge bg-secondary">{{ user.get_role_display }}</span>
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">
-              <i class="bi bi-box-arrow-right"></i> Logout
-            </a></li>
+            <li>
+              <form method="post" action="{% url 'accounts:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item">
+                  <i class="bi bi-box-arrow-right"></i> Logout
+                </button>
+              </form>
+            </li>
           </ul>
         </li>
       </ul>

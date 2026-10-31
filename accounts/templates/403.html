@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Not allowed · Brightloop SMS{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+  <h1 class="h3">You don't have access to this page</h1>
+  <p class="text-muted">Your role can't open this page. If you think this is a mistake, ask an admin.</p>
+  <a class="btn btn-primary" href="{% url 'accounts:home' %}">Go to my home page</a>
+</div>
+{% endblock %}
