@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Django
+*.log
+db.sqlite3
+/static/
+/media/
+
+# Environment — NEVER commit secrets
+.env
+
+# Node
+frontend/node_modules/
+frontend/dist/
+node_modules/
+
+# Scratch files created during development
+read_docx.js
+package.json
+package-lock.json
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+

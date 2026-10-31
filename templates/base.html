@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Brightloop SMS{% endblock %}</title>
+  <!-- Bootstrap 5 CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+        rel="stylesheet">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+{% if user.is_authenticated %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'accounts:home' %}">
+      <i class="bi bi-lightning-charge-fill text-warning"></i> Brightloop SMS
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav me-auto">
+        {% if user.role == "admin" or user.role == "staff" %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'dashboard:index' %}">
+              <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'products:list' %}">
+              <i class="bi bi-box-seam"></i> Products
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'subscriptions:list' %}">
+              <i class="bi bi-arrow-repeat"></i> Subscriptions
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'billing:invoice_list' %}">
+              <i class="bi bi-receipt"></i> Billing
+            </a>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'portal:my_subscriptions' %}">
+              <i class="bi bi-arrow-repeat"></i> My Subscriptions
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'portal:my_invoices' %}">
+              <i class="bi bi-receipt"></i> My Invoices
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+      <ul class="navbar-nav">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle"></i>
+            {{ user.username }}
+            <span class="badge bg-secondary">{{ user.get_role_display }}</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">
+              <i class="bi bi-box-arrow-right"></i> Logout
+            </a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<!-- Flash messages -->
+<div class="container mt-2">
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+</div>
+
+<main class="container mt-4">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="text-center text-muted py-4 mt-5 border-top">
+  <small>Brightloop SMS &copy; 2026</small>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
+
