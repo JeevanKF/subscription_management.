@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Brightloop SMS{% endblock %}
+
+{% block content %}
+<h3 class="mb-3"><i class="bi bi-speedometer2"></i> Dashboard</h3>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <div class="card shadow-sm text-center h-100">
+      <div class="card-body">
+        <div class="small text-muted">Active subscriptions</div>
+        <div class="fs-4 fw-bold">{{ metrics.active_subscriptions }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card shadow-sm text-center h-100">
+      <div class="card-body">
+        <div class="small text-muted">MRR</div>
+        <div class="fs-4 fw-bold">₹{{ metrics.mrr|floatformat:2 }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card shadow-sm text-center h-100">
+      <div class="card-body">
+        <div class="small text-muted">Revenue collected</div>
+        <div class="fs-4 fw-bold">₹{{ metrics.revenue_collected|floatformat:2 }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card shadow-sm text-center h-100">
+      <div class="card-body">
+        <div class="small text-muted">Outstanding</div>
+        <div class="fs-4 fw-bold">₹{{ metrics.outstanding|floatformat:2 }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card shadow-sm text-center h-100 border-danger">
+      <div class="card-body">
+        <div class="small text-muted">Overdue invoices</div>
+        <div class="fs-4 fw-bold text-danger">{{ metrics.overdue_count }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form method="get" class="row g-2 mb-4 align-items-end">
+  <div class="col-auto">
+    <label class="form-label small mb-0">From</label>
+    <input type="date" name="start" value="{{ selected_start }}" class="form-control">
+  </div>
+  <div class="col-auto">
+    <label class="form-label small mb-0">To</label>
+    <input type="date" name="end" value="{{ selected_end }}" class="form-control">
+  </div>
+  <div class="col-auto">
+    <label class="form-label small mb-0">Customer</label>
+    <select name="customer" class="form-select">
+      <option value="">All customers</option>
+      {% for customer in customers %}
+        <option value="{{ customer.id }}" {% if customer.id|stringformat:"s" == selected_customer %}selected{% endif %}>
+          {{ customer.get_full_name|default:customer.username }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <label class="form-label small mb-0">Plan</label>
+    <select name="plan" class="form-select">
+      <option value="">All plans</option>
+      {% for plan in plans %}
+        <option value="{{ plan.id }}" {% if plan.id|stringformat:"s" == selected_plan %}selected{% endif %}>
+          {{ plan.product.name }} — {{ plan.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Apply</button>
+    <a href="{% url 'dashboard:index' %}" class="btn btn-link">Reset</a>
+  </div>
+</form>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="text-uppercase text-muted small">Revenue by month</h6>
+        {% if revenue_labels %}
+          <canvas id="revenueChart" height="140"></canvas>
+        {% else %}
+          {% include "partials/empty_state.html" with icon="bi-graph-up" title="No payments yet" %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-5">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="text-uppercase text-muted small">Invoices by status</h6>
+        {% if status_labels %}
+          <canvas id="statusChart" height="140"></canvas>
+        {% else %}
+          {% include "partials/empty_state.html" with icon="bi-pie-chart" title="No invoices yet" %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<h5>Overdue invoices</h5>
+{% if overdue_invoices %}
+  <div class="table-responsive">
+    <table class="table table-sm table-hover">
+      <thead><tr><th>Number</th><th>Customer</th><th>Due date</th><th>Balance due</th></tr></thead>
+      <tbody>
+        {% for invoice in overdue_invoices %}
+          <tr>
+            <td><a href="{% url 'billing:invoice_detail' invoice.pk %}">{{ invoice.number }}</a></td>
+            <td>{{ invoice.subscription.customer.get_full_name|default:invoice.subscription.customer.username }}</td>
+            <td>{{ invoice.due_date }}</td>
+            <td class="text-danger fw-semibold">₹{{ invoice.balance_due }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  {% include "partials/empty_state.html" with icon="bi-check-circle" title="No overdue invoices" message="Everything is on track." %}
+{% endif %}
+
+{{ revenue_labels|json_script:"revenue-labels" }}
+{{ revenue_values|json_script:"revenue-values" }}
+{{ status_labels|json_script:"status-labels" }}
+{{ status_values|json_script:"status-values" }}
+{% endblock %}
+
+{% block extra_js %}
+{% if revenue_labels or status_labels %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  const revenueLabels = JSON.parse(document.getElementById('revenue-labels').textContent);
+  const revenueValues = JSON.parse(document.getElementById('revenue-values').textContent);
+  const statusLabels = JSON.parse(document.getElementById('status-labels').textContent);
+  const statusValues = JSON.parse(document.getElementById('status-values').textContent);
+
+  if (revenueLabels.length) {
+    new Chart(document.getElementById('revenueChart'), {
+      type: 'bar',
+      data: { labels: revenueLabels, datasets: [{ label: 'Revenue', data: revenueValues, backgroundColor: '#0d6efd' }] },
+      options: { plugins: { legend: { display: false } } },
+    });
+  }
+
+  if (statusLabels.length) {
+    new Chart(document.getElementById('statusChart'), {
+      type: 'doughnut',
+      data: {
+        labels: statusLabels,
+        datasets: [{ data: statusValues, backgroundColor: ['#198754', '#dc3545', '#0dcaf0', '#6c757d', '#ffc107', '#adb5bd'] }],
+      },
+    });
+  }
+</script>
+{% endif %}
+{% endblock %}
