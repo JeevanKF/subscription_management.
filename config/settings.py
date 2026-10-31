@@ -1,5 +1,8 @@
 """
-Django settings for Brightloop SMS — Django REST API + React frontend.
+Django settings for Brightloop SMS.
+
+Pages are server-rendered Django templates. The /api/ routes (DRF) are kept
+for the React frontend. Secrets and database settings come from .env.
 """
 
 import os
@@ -13,7 +16,7 @@ load_dotenv(BASE_DIR / ".env")
 # ─── Security ─────────────────────────────────────────────────────────────────
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-dev-key-change-me")
 DEBUG = os.environ.get("DEBUG", "True") == "True"
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
 
 # ─── Custom user (must be set before first migration) ─────────────────────────
 AUTH_USER_MODEL = "accounts.User"
@@ -39,7 +42,7 @@ INSTALLED_APPS = [
     "portal",
 ]
 
-# ─── Middleware ────────────────────────────────────────────────────────────────
+# ─── Middleware ───────────────────────────────────────────────────────────────
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",          # must be first
     "django.middleware.security.SecurityMiddleware",
@@ -53,7 +56,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 
-# ─── Templates (only used by Django admin + DRF browsable API) ────────────────
+# ─── Templates ────────────────────────────────────────────────────────────────
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -72,22 +75,32 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# ─── Database — Neon PostgreSQL, credentials from .env ────────────────────────
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("DB_NAME", "neondb"),
-        "USER": os.environ.get("DB_USER", "neondb_owner"),
-        "PASSWORD": os.environ.get("DB_PASSWORD", ""),
-        "HOST": os.environ.get("DB_HOST", ""),
-        "PORT": os.environ.get("DB_PORT", "5432"),
-        "OPTIONS": {
-            "sslmode": os.environ.get("DB_SSLMODE", "require"),
-        },
+# ─── Database — PostgreSQL from .env ──────────────────────────────────────────
+# If DB_NAME is not set in .env, fall back to a local SQLite file so the
+# project still runs (and tests still pass) on a machine without PostgreSQL.
+if os.environ.get("DB_NAME"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ["DB_NAME"],
+            "USER": os.environ.get("DB_USER", "postgres"),
+            "PASSWORD": os.environ.get("DB_PASSWORD", ""),
+            "HOST": os.environ.get("DB_HOST", "localhost"),
+            "PORT": os.environ.get("DB_PORT", "5432"),
+            "OPTIONS": {
+                "sslmode": os.environ.get("DB_SSLMODE", "prefer"),
+            },
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
-# ─── Django REST Framework ─────────────────────────────────────────────────────
+# ─── Django REST Framework ────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
@@ -108,12 +121,18 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
+# Login is by email, case-insensitive (see UserManager.get_by_natural_key).
+# One rule for sign-up, staff creation and password reset: see accounts/validators.py
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {"NAME": "accounts.validators.StrongPasswordValidator"},
 ]
+
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "accounts:home"      # sends each role to its own home page
+LOGOUT_REDIRECT_URL = "accounts:login"
+
+# Password reset links expire after 1 day (or after first use)
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 
 # ─── Internationalisation ─────────────────────────────────────────────────────
 LANGUAGE_CODE = "en-us"
@@ -124,8 +143,9 @@ USE_TZ = True
 # ─── Static files ─────────────────────────────────────────────────────────────
 STATIC_URL = "/static/"
 
-# ─── Email — console backend for dev ──────────────────────────────────────────
+# ─── Email — console backend for dev (reset links print in the terminal) ──────
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "Brightloop SMS <no-reply@brightloop.local>"
 
 # ─── Default primary key ──────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
