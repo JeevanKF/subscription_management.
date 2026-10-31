@@ -115,7 +115,7 @@ def calculate_invoice_totals(subscription: Subscription, discount_code: str = No
     # First pass: calculate line subtotals & product-specific discounts
     for line in sub_lines:
         qty = line.quantity
-      = Decimal(str(line.unit_price))
+        price = Decimal(str(line.unit_price))
         line_sub = round_curr(price * qty)
         subtotal += line_sub
 

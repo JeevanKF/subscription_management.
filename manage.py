@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!C:\Users\lenovo\AppData\Local\Programs\Python\Python313\python.exe
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
