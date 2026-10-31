@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Home · Brightloop SMS{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Welcome, {{ user.name|default:user.email }}</h1>
+<p class="text-muted">You're signed in as {{ user.get_role_display }}.</p>
+
+{% if user.role == "admin" or user.role == "staff" %}
+<div class="row g-3">
+  <div class="col-sm-6 col-lg-3">
+    <a class="card h-100 text-decoration-none" href="{% url 'accounts:customer_list' %}">
+      <div class="card-body"><i class="bi bi-people fs-3"></i><h2 class="h6 mt-2 mb-0">Customers</h2></div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <a class="card h-100 text-decoration-none" href="{% url 'products:list' %}">
+      <div class="card-body"><i class="bi bi-box-seam fs-3"></i><h2 class="h6 mt-2 mb-0">Products</h2></div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <a class="card h-100 text-decoration-none" href="{% url 'products:plan_list' %}">
+      <div class="card-body"><i class="bi bi-calendar3 fs-3"></i><h2 class="h6 mt-2 mb-0">Plans</h2></div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <a class="card h-100 text-decoration-none" href="{% url 'products:tax_list' %}">
+      <div class="card-body"><i class="bi bi-percent fs-3"></i><h2 class="h6 mt-2 mb-0">Tax rules</h2></div>
+    </a>
+  </div>
+  {% if user.role == "admin" %}
+  <div class="col-sm-6 col-lg-3">
+    <a class="card h-100 text-decoration-none" href="{% url 'accounts:staff_list' %}">
+      <div class="card-body"><i class="bi bi-person-badge fs-3"></i><h2 class="h6 mt-2 mb-0">Staff accounts</h2></div>
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="card">
+  <div class="card-body">
+    Your subscriptions and invoices will appear here.
+  </div>
+</div>
+{% endif %}
+{% endblock %}

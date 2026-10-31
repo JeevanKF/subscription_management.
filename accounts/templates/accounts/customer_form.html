@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{% if customer %}{{ customer.name }}{% else %}New customer{% endif %} · Brightloop SMS{% endblock %}
+{% block content %}
+<nav class="small mb-2"><a href="{% url 'accounts:customer_list' %}">&larr; Customers</a></nav>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <h1 class="h3 mb-3">{% if customer %}{{ customer.name }}{% else %}New customer{% endif %}</h1>
+    <form method="post" novalidate class="card card-body">
+      {% csrf_token %}
+      {% include "accounts/_form_fields.html" %}
+      {% if not customer %}
+        <p class="form-text mt-0">The customer will get an email with a link to set their own password.</p>
+      {% endif %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">{% if customer %}Save{% else %}Create customer{% endif %}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'accounts:customer_list' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+  {% if customer %}
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h6">Account</h2>
+        <dl class="row small mb-3">
+          <dt class="col-5">Joined</dt><dd class="col-7">{{ customer.date_joined|date:"d M Y" }}</dd>
+          <dt class="col-5">Last login</dt><dd class="col-7">{{ customer.last_login|date:"d M Y H:i"|default:"Never" }}</dd>
+          <dt class="col-5">Password set</dt><dd class="col-7">{% if customer.has_usable_password %}Yes{% else %}Not yet{% endif %}</dd>
+        </dl>
+        <form method="post" action="{% url 'accounts:customer_send_password_link' customer.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-envelope"></i> Email a password link
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
