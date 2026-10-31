@@ -38,7 +38,7 @@
       <tr><th colspan="4" class="text-end">Subtotal</th><th>₹{{ invoice.subtotal }}</th></tr>
       <tr><th colspan="4" class="text-end">Tax</th><th>₹{{ invoice.tax_total }}</th></tr>
       <tr><th colspan="4" class="text-end">Total</th><th>₹{{ invoice.total }}</th></tr>
-      <tr><th colspan="4" class="text-end">Balance due</th><th>₹{{ invoice.balance_due }}</th></tr>
+      <tr><th colspan="4" class="text-end">Balance due</th><th>₹{{ invoice.balance_due|floatformat:2 }}</th></tr>
     </tfoot>
   </table>
 </div>

@@ -54,7 +54,9 @@
           <tr>
             <td><a href="{% url 'subscriptions:detail' sub.pk %}">{{ sub.number }}</a></td>
             <td>{{ sub.customer.get_full_name|default:sub.customer.username }}</td>
-            <td>{{ sub.lines.all|join:", " }}</td>
+            <td>
+              {% for line in sub.lines.all %}{{ line.plan.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            </td>
             <td>
               <span class="badge
                 {% if sub.status == 'active' %}bg-success

@@ -50,7 +50,7 @@
               </span>
             </td>
             <td>₹{{ invoice.total }}</td>
-            <td>₹{{ invoice.balance_due }}</td>
+            <td>₹{{ invoice.balance_due|floatformat:2 }}</td>
           </tr>
         {% endfor %}
       </tbody>

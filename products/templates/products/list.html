@@ -27,7 +27,7 @@
               <ul class="list-unstyled small mb-0">
                 {% for plan in product.plans.all %}
                   <li class="d-flex justify-content-between border-bottom py-1">
-                    <span>{{ plan.name }} <span class="text-muted">({{ plan.get_billing_cycle_display }})</span></span>
+                    <span>{{ plan.name }}</span>
                     <span class="fw-semibold">₹{{ plan.price }}</span>
                   </li>
                 {% endfor %}
