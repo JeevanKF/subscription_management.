@@ -118,6 +118,10 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "accounts:home"
+LOGOUT_REDIRECT_URL = "accounts:login"
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
